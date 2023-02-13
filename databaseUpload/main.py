@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+import datetime
 
 from google.cloud import storage
 import gcsfs
@@ -52,9 +53,17 @@ def get_image_file(filename: str, project_id: str, image_bucket:str):
     return blobs[0], image_content
 
 
-#TODO: find a way of avoiding the timeout for URLs
-def generate_URL(filename:str, project_id:str, image_bucket:str):
-    pass
+def generate_URL(filename:str, image_bucket:str):
+    bucket = storage.client.bucket(image_bucket)
+    blob = bucket.blob(filename)
+
+    url = blob.generate_signed_url(
+        version="v4" # Does the version make a difference?
+        expiration=datetime.timedelta(minutes=30)
+        method="GET"
+    )
+
+    return url
 
 
 def database_upload(file, context):
@@ -77,9 +86,11 @@ def database_upload(file, context):
     # find the corresponding image file
     file_prefix = filename.split(".")[0]
     image_name, image_content = get_image_file(file_prefix, project_id, image_bucket)
+    image_url = generate_URL(image_name, image_bucket)
 
     data['image_file'] = image_name
     data['image_content'] = image_content
+    data['image_url'] = image_url
 
     success = json.loads(
         requests.post(
