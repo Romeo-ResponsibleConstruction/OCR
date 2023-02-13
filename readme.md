@@ -50,7 +50,7 @@ if we let $I$ be the number of insertions, $D$ the number of deletions, and $R$ 
 
 $$\text{Pr}_I, D, R(i, d, r) = \text{Pr}_I(i) \times \text{Pr}_D(d) \times \text{Pr}_R(r)$$
 
-We further make the assumption that the probability of an insertion, deletion, or replacement is independent of the character $x$.
+We further make the assumption that the probability of an insertion, deletion, or replacement is independent of the character $x$, and any inserted/replaced characters.
 
 We make use the following probability models to model each different type of noise, where $\text{Po}$ refers to the Poisson distribution.
 $$I \sim \text{Po}(\lambda_1)$$
@@ -63,9 +63,9 @@ And symmetrically for the other two cases.
 
 To estimate $\lambda_1, \lambda_2, \lambda_3$, we performed maximum likelihood estimation on manually labelled outputs of the OCR model, according to the following steps
 1. If it is a legitimate field value, then note the true field name, `trueFieldName`. Omit any punctuation, like the colon in "Field Name:", since the formatting may be inconsistent.
-2. If it is not, leave the true field name blank.
-3. If there are multiple field values corresponding to multiple field names, arbitrarily pick one.
-4. If one field value is broken up across multiple identified field names, arbitrarily pick one identified field name. Leave the rest blank.
+2. If it is not, leave `trueFieldName` blank.
+3. If there are `fieldValue` contains multiple field values corresponding to multiple legitimate field names, arbitrarily pick one.
+4. If one field value is broken up across multiple identified `fieldValue`s, pick the `fieldValue` with the closest `fieldName` match to the true field name. Leave the rest blank.
 
 This allows us to compute $\text{Pr(observed tokens | actual tokens = w)}$ , by computing the $I_w, D_w, R_w$ values for the `(observed tokens, w)` pairs.
 
