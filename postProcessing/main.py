@@ -36,6 +36,43 @@ class NegativeValueDetectedException(Exception):
     pass
 
 
+def levenshtein_distance(str1, str2):
+    n, m = len(str1), len(str2)
+    dp = [[tuple((0, [0, 0, 0])) for i in range(m + 1)] for j in range(n + 1)]
+    insertion = 0
+    deletion = 0
+    replacement = 0
+    for j in range(m + 1):
+        dp[0][j] = tuple((j, [j, 0, 0]))
+    for i in range(n + 1):
+        dp[i][0] = tuple((i, [0, i, 0]))
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            if str1[i - 1] == str2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1]
+            else:
+                inse, icounts = dp[i - 1][j]
+                dele, dcounts = dp[i][j - 1]
+                repl, rcounts = dp[i - 1][j - 1]
+                counts = [0, 0, 0]
+                if inse == min(inse, dele, repl):
+                    counts = icounts.copy()
+                    counts[0] += 1
+                elif dele == min(inse, dele, repl):
+                    counts = dcounts.copy()
+                    counts[1] += 1
+                else:
+                    counts = rcounts.copy()
+                    counts[2] += 1
+                dp[i][j] = tuple((1 + min(inse, dele, repl), counts))
+
+    return dp[n][m]
+
+
+def edit_distance(s1, s2):
+    l0, l1 = levenshtein_distance(s1, s2)
+    return np.array(l1)
+
 def validate_message(message, param):
     var = message.get(param)
     if not var:
@@ -70,21 +107,27 @@ def extract_field_value(bucket, file_name):
     raw_data = pd.DataFrame.copy(df)
 
     field_names = raw_data["Field Name"]
-    initial_likelihoods = raw_data["Field Name Confidence"]
     field_names = field_names.apply(lambda x: x.lower())
-    vec_edit_distance = np.vectorize(nltk.edit_distance)
-    distances = vec_edit_distance(field_names, "Total Weight".lower())
-    likelihoods = scipy.stats.poisson.pmf(distances, 2.05039332)
-    likelihoods *= initial_likelihoods
+
+    ins_lambda = float(os.environ["INS_LAMBDA"])
+    del_lambda = float(os.environ["DEL_LAMBDA"])
+    rep_lambda = float(os.environ["REP_LAMBDA"])
+    to_match = os.environ["TO_MATCH"]
+    distances = np.array([(edit_distance(fn, to_match.lower())) for fn in field_names])
+
+    likelihoods_ins = scipy.stats.poisson.pmf(distances[:, 0], ins_lambda)
+    likelihoods_del = scipy.stats.poisson.pmf(distances[:, 1], del_lambda)
+    likelihoods_rep = scipy.stats.poisson.pmf(distances[:, 2], rep_lambda)
+    likelihoods = likelihoods_ins * likelihoods_del * likelihoods_rep
 
     # Check if sufficiently high likelihood - parameter can be tuned
     if np.max(likelihoods) < threshold_field_likelihood:
-        raise FieldLikelihoodThresholdException(np.max(likelihoods))
+        raise FieldLikelihoodThresholdException(float(np.max(likelihoods)))
 
     likelihoods /= np.sum(likelihoods)
     # Check if maximum a posteriori likelihood reaches threshold
     if np.max(likelihoods) < threshold_posterior_field_likelihood:
-        raise PosteriorLikelihoodThresholdException((np.max(likelihoods)))
+        raise PosteriorLikelihoodThresholdException(float(np.max(likelihoods)))
 
     df["Field Name Posterior Likelihood"] = likelihoods
     value_object = df.loc[df["Field Name Posterior Likelihood"].idxmax()]
@@ -129,7 +172,11 @@ def process_raw_data(file, context):
     keys = ["OUTPUT_BUCKET",
             "WEIGHTS_DATABASE",
             "THRESHOLD_FIELD_LIKELIHOOD",
-            "THRESHOLD_POSTERIOR_FIELD_LIKELIHOOD"]
+            "THRESHOLD_POSTERIOR_FIELD_LIKELIHOOD",
+            "INS_LAMBDA",
+            "DEL_LAMBDA",
+            "REP_LAMBDA",
+            "TO_MATCH"]
     for key in keys:
         assert os.environ[key]
 
