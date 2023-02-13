@@ -58,10 +58,10 @@ $$D \sim \text{Po}(\lambda_2)$$
 $$R \sim \text{Po}(\lambda_3)$$
 
 Given the aforementioned assumptions, and that the Poisson distribution is additive, given a word $w$, we can easily construct models for the noise
-$$I_w \ sim \text{Po}(\lambda_1 \times |w|)$$
+$$I_w \sim \text{Po}(\lambda_1 \times |w|)$$
 And symmetrically for the other two cases.
 
-To estimate $\lambda_1, \lambda_2, and \lambda_3$, we performed maximum likelihood estimation on manually labelled outputs of the OCR model, according to the following steps
+To estimate $\lambda_1, \lambda_2, \lambda_3$, we performed maximum likelihood estimation on manually labelled outputs of the OCR model, according to the following steps
 1. If it is a legitimate field value, then note the true field name, `trueFieldName`. Omit any punctuation, like the colon in "Field Name:", since the formatting may be inconsistent.
 2. If it is not, leave the true field name blank.
 3. If there are multiple field values corresponding to multiple field names, arbitrarily pick one.
