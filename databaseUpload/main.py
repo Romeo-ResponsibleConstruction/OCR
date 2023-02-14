@@ -88,8 +88,6 @@ def database_upload(file, context):
     image_name, image_content = get_image_file(file_prefix, project_id, image_bucket)
     image_url = generate_URL(image_name, image_bucket)
 
-    data['image_file'] = image_name
-    data['image_content'] = image_content
     data['image_url'] = image_url
 
     success = json.loads(

@@ -24,10 +24,12 @@ It then calls Google Cloud Platform's document parse OCR processor, extracts the
 
 If data extraction and validation are successful, `[fileName].json` contains:
 1. `success = true`, 
-2. `fieldValue` (the extracted value), 
-3. `checks` (set to true if passed, or false if failed)
-   1. `extremeValueCheck`. Determines if the extracted value is an outlier (defined to be smaller or greater than 95% of weights)
-   2. `decimalPlaceCheck`. Determines if the extracted value has 3 decimal places.
+2. `weight`. Information associated with the extracted weight:
+   1. `value` (the extracted value)
+   2. `fieldNameLikelihood`
+   3. `checks` (set to true if passed, or false if failed)
+      1. `extremeValueCheck`. Determines if the extracted value is an outlier (defined to be smaller or greater than 95% of weights)
+      2. `decimalPlaceCheck`. Determines if the extracted value has 3 decimal places.
 
 Otherwise, `[fileName].json` contains:
 1. `success = false`

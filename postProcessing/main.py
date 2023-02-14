@@ -191,9 +191,9 @@ def process_raw_data(file, context):
     try:
         value = extract_field_value(bucket, name)
         return_object["success"] = True
-        return_object["value"] = value
         checks = run_heuristic_checks(value, weights_database)
-        return_object["checks"] = checks
+        value["checks"] = checks
+        return_object["weight"] = value
 
     except FieldLikelihoodThresholdException as e:
         likelihood = e.likelihood
