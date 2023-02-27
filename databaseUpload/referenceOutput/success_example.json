@@ -1,0 +1,14 @@
+{
+  "extractedFields": [
+    "total weight"
+  ],
+  "total weight": {
+    "success": true,
+    "error": null,
+    "value": "186.966",
+    "checks": {
+      "extremeValueCheck": true,
+      "decimalPlaceCheck": true
+    }
+  }
+}

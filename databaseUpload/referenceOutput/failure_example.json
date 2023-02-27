@@ -1,0 +1,14 @@
+{
+  "extractedFields": [
+    "total weight"
+  ],
+  "total weight": {
+    "success": false,
+    "error": {
+      "type": "field name",
+      "description": "No extracted field name with sufficiently high likelihood. Threshold: 0.1. Actual: 5.233852136896056e-05"
+    },
+    "value": null,
+    "checks": null
+  }
+}

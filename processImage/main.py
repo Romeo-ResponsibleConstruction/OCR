@@ -5,16 +5,16 @@ from google.cloud import storage
 import pandas as pd
 import gcsfs
 import os
+import json
+from google.cloud import tasks_v2beta3 as tasks
+from google.cloud import pubsub_v1
 
 STORAGE_CLIENT = storage.Client()
+TASK_CLIENT = tasks.CloudTasksClient()
 
 
-class FileFormatNotSupportedException(Exception):
-    pass
-
-
-def validate_message(message, param):
-    var = message.get(param)
+def validate_payload(payload, param):
+    var = payload[param]
     if not var:
         raise ValueError(
             "{} is not provided. Make sure you have \
@@ -25,7 +25,27 @@ def validate_message(message, param):
     return var
 
 
-def process_document(
+def enqueue_field_match(output_bucket: str, output_file_name: str, fields: dict):
+    service_account_email = os.environ["SAE"]+"@appspot.gserviceaccount.com"
+    project_id = os.environ["PROJECT_ID"]
+    queue = os.environ["QUEUE"]
+    location = os.environ["LOCATION"]
+    url = os.environ["URL"]
+    payload = {"bucket": output_bucket, "name": output_file_name, "fields": fields}
+    formatted_parent = TASK_CLIENT.queue_path(project_id, location, queue)
+
+    http_request = tasks.HttpRequest(url=url,
+                                     oidc_token=tasks.OidcToken(service_account_email=service_account_email),
+                                     headers={"Content-Type": "application/json"},
+                                     body=json.dumps(payload).encode('utf-8')
+                                     )
+    task = tasks.Task(http_request=http_request)
+    request = tasks.CreateTaskRequest(parent=formatted_parent, task=task)
+
+    response = TASK_CLIENT.create_task(request)
+
+
+def parse_document(
         project_id: str,
         location: str,
         processor_id: str,
@@ -55,26 +75,26 @@ def process_document(
     return result.document
 
 
-def save_data(output_bucket: str, output_file_name: str, dataframe: pandas.DataFrame):
+def save_data(output_bucket: str, output_file_name: str, dataframe: pandas.DataFrame, fields: dict):
     csv = dataframe.to_csv()
     filename = "{}.csv".format(output_file_name)
     bucket = STORAGE_CLIENT.get_bucket(output_bucket)
     blob = bucket.blob(filename)
     blob.upload_from_string(csv)
+    enqueue_field_match(output_bucket, filename, fields)
 
 
-def extract_fields(bucket: str, file_name: str, mime_type: str):
-
+def extract_fields(bucket: str, file_name: str, mime_type: str, fields: dict):
     def trim_text(text: str):
         return text.strip().replace("\n", " ")
 
     project_id = os.environ["PROJECT_ID"]
-    location = os.environ["LOCATION"]
+    location = os.environ["LOCATION_SHORT"]
     processor_id = os.environ["PROCESSOR_ID"]
     output_bucket = os.environ["OUTPUT_BUCKET"]
     output_filename = file_name.split(".", 1)[0]
 
-    document = process_document(
+    document = parse_document(
         project_id=project_id,
         location=location,
         processor_id=processor_id,
@@ -104,24 +124,25 @@ def extract_fields(bucket: str, file_name: str, mime_type: str):
         }
     )
 
-    save_data(output_bucket, output_filename, df)
+    save_data(output_bucket, output_filename, df, fields)
 
 
-def process_image(file, context):
-
-    keys = ["PROJECT_ID", "LOCATION", "PROCESSOR_ID", "OUTPUT_BUCKET"]
+def process_image(request):
+    keys = ["PROJECT_ID", "LOCATION", "PROCESSOR_ID", "OUTPUT_BUCKET",
+            "SAE", "URL", "QUEUE", "LOCATION_SHORT"]
     for key in keys:
-        assert os.environ[key]
+        assert key in os.environ
+    payload = request.json
+    try:
+        bucket = validate_payload(payload, "bucket")
+        name = validate_payload(payload, "name")
+        fields = validate_payload(payload, "fields")
+        extension = name.split(".", 1)[-1]
+        if extension == "png":
+            mime_type = "image/png"
+        else:
+            mime_type = "image/jpeg"
+        extract_fields(bucket, name, mime_type, fields)
+    except Exception as e:
+        return str(e), 400, []
 
-    bucket = validate_message(file, "bucket")
-    name = validate_message(file, "name")
-
-    extension = name.split(".", 1)[-1]
-    if extension == "png":
-        mime_type = "image/png"
-    elif extension == "jpeg" or extension == "jpg":
-        mime_type = "image/jpeg"
-    else:
-        raise FileFormatNotSupportedException()
-
-    extract_fields(bucket, name, mime_type)
