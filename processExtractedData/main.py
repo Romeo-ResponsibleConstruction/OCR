@@ -208,8 +208,6 @@ def process_extracted_data(request):
         def callback_with_key(response_key: str):
             def callback(message: pubsub_v1.subscriber.message.Message) -> None:
                 return_object[response_key] = json.loads(message.data.decode('utf-8'))
-                print("CALLBACK")
-                print(f"Received {message}.")
                 message.ack()
                 return
             return callback
@@ -224,24 +222,22 @@ def process_extracted_data(request):
 
         except FieldLikelihoodThresholdException as e:
             likelihood = e.likelihood
+            threshold = os.environ["THRESHOLD_FIELD_LIKELIHOOD"]
             response["success"] = False
             response["error"] = {"type": "field name",
-                                 "description": "no extracted field name with high enough likelihood",
-                                 "likelihoods": {
-                                     "threshold": os.environ["THRESHOLD_FIELD_LIKELIHOOD"],
-                                     "actual": likelihood
+                                 "description": f"No extracted field name with sufficiently high likelihood. Threshold: {threshold}. Actual: {likelihood}",
                                  }
-                                 }
+            response["value"] = None
+            response["checks"] = None
         except PosteriorLikelihoodThresholdException as e:
             likelihood = e.likelihood
+            posterior = os.environ['THRESHOLD_POSTERIOR_FIELD_LIKELIHOOD']
             response["success"] = False
             response["error"] = {"type": "field name",
-                                 "description": "maximum a posteriori field name does not meet likelihood threshold",
-                                 "likelihoods": {
-                                     "threshold": os.environ["THRESHOLD_POSTERIOR_FIELD_LIKELIHOOD"],
-                                     "actual": likelihood
+                                 "description": f"Maximum a posteriori field name does not meet likelihood threshold. Threshold: {posterior}. Actual: {likelihood}",
                                  }
-                                 }
+            response["value"] = None
+            response["checks"] = None
 
         timeout = float(os.environ["TIMEOUT"])
         with SUB_CLIENT:
@@ -251,7 +247,12 @@ def process_extracted_data(request):
                     # unless an exception is encountered first.
                     f.result(timeout=timeout)
                 except TimeoutError:
-                    print("TimeoutError")
+                    response["success"] = False
+                    response["error"] = {"type": "timeout",
+                                         "description": f"Field value match function did not terminate within specified timeout. Timeout: {timeout}. Function Name: {function_name}",
+                                         }
+                    response["value"] = None
+                    response["checks"] = None
                     f.cancel()  # Trigger the shutdown.
                     f.result()
             cleanup(topic_paths, subscription_paths)

@@ -57,8 +57,9 @@ def run_heuristic_checks(value):
         checks["extremeValueCheck"] = True
 
     # CHECK 2: Decimal Place Check
-    decimal_places = -decimal.Decimal(str(value)).as_tuple().exponent
-    if decimal_places != 3:
+    value_str = str(value)
+    ind_of_dec = value_str.index(".")
+    if ind_of_dec != -1 and ind_of_dec != len(value_str)-1 and len(value_str[ind_of_dec+1:]) != 3:
         checks["decimalPlaceCheck"] = False
     else:
         checks["decimalPlaceCheck"] = True
@@ -77,11 +78,20 @@ def extract_total_weight(request):
     try:
         value = extract_value_from_string(value_string)
         checks = run_heuristic_checks(float(value))
-        to_publish = {"success": True, "value": value, "checks": checks}
+        to_publish = {"success": True,
+                      "error": None,
+                      "value": value,
+                      "checks": checks}
     except ValueNotMatchedException:
-        to_publish = {"success": False, "description": "could not match a field value"}
+        to_publish = {"success": False,
+                      "error": {"type": "field value", "description": "Matched field value does not contain number"},
+                      "value": None,
+                      "checks": None}
     except NegativeValueDetectedException:
-        to_publish = {"success": False, "description": "negative field value matched"}
+        to_publish = {"success": False,
+                      "error": {"type": "field value", "description": "Negative field value detected"},
+                      "value": None,
+                      "checks": None}
 
     project_id = os.environ["PROJECT_ID"]
     topic_path = PUB_CLIENT.topic_path(project_id, topic_id)
