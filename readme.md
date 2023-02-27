@@ -27,7 +27,7 @@ _Please refer to individual packages for more information_
 
 **Post-condition**: `[fileName].json` in `gpr_sanitised_data` bucket.
 
-# 4. Uploading to the Database
+## 4. Uploading to the Database
 **Packages**: `databaseUpload`
 
 **Pre-condition**: `[fileName].json` in `gpr_sanitised_data` bucket.
