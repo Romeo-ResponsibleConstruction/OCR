@@ -2,7 +2,7 @@
 
 _Please refer to individual packages for more information_
 
-![dataPipeline.png](img.png)
+![Data Pipeline Overview](./dataPipeline.jpeg)
 
 ## 1. Accepting the Image
 **Packages**: `receiveImage`
