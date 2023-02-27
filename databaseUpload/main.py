@@ -58,7 +58,7 @@ def generate_URL(filename:str, image_bucket:str):
     blob = bucket.blob(filename)
 
     url = blob.generate_signed_url(
-        version="v4", # Does the version make a difference?
+        version="v4",
         expiration=datetime.timedelta(minutes=30),
         method="GET"
     )
@@ -91,9 +91,6 @@ def database_upload(file, context):
     data['image_url'] = image_url
 
     success = json.loads(
-        requests.post(
-            url=f"{os.environ["DATABASE_URL"]}/newTicket", 
-            json=data)
-    )
+        requests.post(url=f"{os.environ['DATABASE_URL']}/newTicket", json=data))
 
     #TODO: implement a retry mechanism for if the database is unavailable
