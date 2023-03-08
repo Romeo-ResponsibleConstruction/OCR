@@ -1,4 +1,3 @@
-import decimal
 import numpy as np
 import pandas as pd
 import os
@@ -14,12 +13,8 @@ class ValueNotMatchedException(Exception):
     pass
 
 
-class NegativeValueDetectedException(Exception):
-    pass
-
-
-def validate_payload(payload, param):
-    var = payload[param]
+def validate_payload(message, param):
+    var = message.get(param)
     if not var:
         raise ValueError(
             "{} is not provided. Make sure you have \
@@ -50,16 +45,16 @@ def run_heuristic_checks(value):
     # CHECK 1: Extreme Value Check
     weights = pd.read_csv("gs://"+weights_database)
     w = weights["Weight"]
-    p = min(np.mean(w <= value), np.mean(w >= value))
+    value_float = float(value)
+    p = min(np.mean(w <= value_float), np.mean(w >= value_float))
     if p < 0.05:
         checks["extremeValueCheck"] = False
     else:
         checks["extremeValueCheck"] = True
 
     # CHECK 2: Decimal Place Check
-    value_str = str(value)
-    ind_of_dec = value_str.index(".")
-    if ind_of_dec != -1 and ind_of_dec != len(value_str)-1 and len(value_str[ind_of_dec+1:]) != 3:
+    ind_of_dec = value.find(".")
+    if ind_of_dec != -1 and ind_of_dec != len(value)-1 and len(value[ind_of_dec+1:]) != 3:
         checks["decimalPlaceCheck"] = False
     else:
         checks["decimalPlaceCheck"] = True
@@ -77,7 +72,7 @@ def extract_total_weight(request):
     to_publish = {}
     try:
         value = extract_value_from_string(value_string)
-        checks = run_heuristic_checks(float(value))
+        checks = run_heuristic_checks(value)
         to_publish = {"success": True,
                       "error": None,
                       "value": value,
@@ -85,11 +80,6 @@ def extract_total_weight(request):
     except ValueNotMatchedException:
         to_publish = {"success": False,
                       "error": {"type": "field value", "description": "Matched field value does not contain number"},
-                      "value": None,
-                      "checks": None}
-    except NegativeValueDetectedException:
-        to_publish = {"success": False,
-                      "error": {"type": "field value", "description": "Negative field value detected"},
                       "value": None,
                       "checks": None}
 

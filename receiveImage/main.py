@@ -1,4 +1,3 @@
-import base64
 import os
 
 from google.cloud import storage
@@ -17,18 +16,6 @@ class FileFormatNotSupportedException(Exception):
 
 def validate_message(message, param):
     var = message.get(param)
-    if not var:
-        raise ValueError(
-            "{} is not provided. Make sure you have \
-                          property {} in the request".format(
-                param, param
-            )
-        )
-    return var
-
-
-def validate_payload(payload, param):
-    var = payload[param]
     if not var:
         raise ValueError(
             "{} is not provided. Make sure you have \
@@ -76,7 +63,6 @@ def generate_unique_file_name(input_bucket: str, input_file_name: str, output_bu
     else:
         output_file_name = str(uuid.uuid4())
         output_file_name += "." + str(input_file_name.split('.', 1)[-1])
-        print(output_bucket)
         is_unique = len(list(filter(lambda y: y == output_file_name, STORAGE_CLIENT.list_blobs(output_bucket)))) == 0
         while True:
             if is_unique:
@@ -110,7 +96,7 @@ def receive_image(file, context):
         raw_fields = {"Total Weight": "totalWeight"}
         sanitised_fields = {k.lower(): v for k, v in raw_fields.items()}
         if not (extension == "png" or extension == "jpeg" or extension == "jpg"):
-            raise FileFormatNotSupportedException()
+            raise FileFormatNotSupportedException("File format {} is not supported".format(extension))
         generate_unique_file_name(os.environ["INPUT_BUCKET"], name, "gpr_images", sanitised_fields)
         return "Ok", 204, []
     except Exception as e:
