@@ -10,5 +10,6 @@
       "extremeValueCheck": true,
       "decimalPlaceCheck": true
     }
-  }
+  },
+  "image_url":"url"
 }
