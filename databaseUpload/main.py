@@ -4,6 +4,7 @@ import requests
 import datetime
 
 from google.cloud import storage
+from google.oauth2 import service_account
 import gcsfs
 
 STORAGE_CLIENT = storage.Client()
@@ -34,8 +35,8 @@ def read_file(
 def get_image_file(filename: str, project_id: str, image_bucket:str):
     fs = gcsfs.GCSFileSystem(project=project_id)
 
-    # gather all image files with correct prefix; images could be jpeg or png
-    blobs = STORAGE_CLIENT.list_blobs(image_bucket, prefix=filename)
+    # gather all image files with correct prefix; images could be jpeg, jpg, or png
+    blobs = list(STORAGE_CLIENT.list_blobs(image_bucket, prefix=filename))
 
     # check that only one matching image is found
     if len(blobs) < 1:
@@ -47,20 +48,20 @@ def get_image_file(filename: str, project_id: str, image_bucket:str):
             "Cannot reconcile filename to unique image"
         )
     
-    with fs.open(f"{image_bucket}/{blobs[0]}") as image:
-        image_content = image.read()
-
-    return blobs[0], image_content
+    filename = blobs[0].name
+    return filename
 
 
 def generate_URL(filename:str, image_bucket:str):
-    bucket = storage.client.bucket(image_bucket)
+    bucket = STORAGE_CLIENT.bucket(image_bucket)
     blob = bucket.blob(filename)
 
     url = blob.generate_signed_url(
         version="v4",
         expiration=datetime.timedelta(minutes=30),
-        method="GET"
+        method="GET",
+        credentials=service_account.Credentials.from_service_account_file('auxiliary.json'),
+        service_account_email='url-signing@ib-group-project-romeo.iam.gserviceaccount.com'
     )
 
     return url
@@ -85,12 +86,10 @@ def database_upload(file, context):
 
     # find the corresponding image file
     file_prefix = filename.split(".")[0]
-    image_name, image_content = get_image_file(file_prefix, project_id, image_bucket)
+    image_name = get_image_file(file_prefix, project_id, image_bucket)
     image_url = generate_URL(image_name, image_bucket)
 
     data['image_url'] = image_url
+    print(data)
 
-    success = json.loads(
-        requests.post(url=f"{os.environ['DATABASE_URL']}/newTicket", json=data))
-
-    #TODO: implement a retry mechanism for if the database is unavailable
+    requests.post(url=f"{os.environ['DATABASE_URL']}/newTicket", json=data)
