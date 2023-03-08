@@ -90,6 +90,5 @@ def database_upload(file, context):
     image_url = generate_URL(image_name, image_bucket)
 
     data['image_url'] = image_url
-    print(data)
 
     requests.post(url=f"{os.environ['DATABASE_URL']}/newTicket", json=data)
