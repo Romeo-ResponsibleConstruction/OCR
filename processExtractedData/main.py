@@ -36,10 +36,6 @@ class ValueNotMatchedException(Exception):
     pass
 
 
-class NegativeValueDetectedException(Exception):
-    pass
-
-
 def enqueue_value_extraction(value_str, value_extraction_function: str, topic: str):
     service_account_email = os.environ["SAE"] + "@appspot.gserviceaccount.com"
     project_id = os.environ["PROJECT_ID"]
