@@ -7,14 +7,13 @@ import gcsfs
 import os
 import json
 from google.cloud import tasks_v2beta3 as tasks
-from google.cloud import pubsub_v1
 
 STORAGE_CLIENT = storage.Client()
 TASK_CLIENT = tasks.CloudTasksClient()
 
 
 def validate_payload(payload, param):
-    var = payload[param]
+    var = payload.get(param)
     if not var:
         raise ValueError(
             "{} is not provided. Make sure you have \
@@ -143,6 +142,7 @@ def process_image(request):
         else:
             mime_type = "image/jpeg"
         extract_fields(bucket, name, mime_type, fields)
+        return "Ok", 204, []
     except Exception as e:
         return str(e), 400, []
 
