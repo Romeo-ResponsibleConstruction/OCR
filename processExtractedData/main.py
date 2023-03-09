@@ -65,9 +65,6 @@ def enqueue_value_extraction(value_str, value_extraction_function: str, topic: s
 def levenshtein_distance(str1, str2):
     n, m = len(str1), len(str2)
     dp = [[tuple((0, [0, 0, 0])) for i in range(m + 1)] for j in range(n + 1)]
-    insertion = 0
-    deletion = 0
-    replacement = 0
     for j in range(m + 1):
         dp[0][j] = tuple((j, [j, 0, 0]))
     for i in range(n + 1):
@@ -101,7 +98,7 @@ def edit_distance(s1, s2):
 
 
 def validate_payload(payload, param):
-    var = payload[param]
+    var = payload.get(param)
     if not var:
         raise ValueError(
             "{} is not provided. Make sure you have \
